@@ -376,3 +376,4 @@ Merci d'utiliser Kengni Finance ! Nous espérons que cette application vous aide
 
 ---
 **Kengni Finance v2.0.1** - © 2025 - Tous droits réservés
+# kengni.fabrice

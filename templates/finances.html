@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block title %}Finances - Kengni Finance{% endblock %}
+{% block page_title %}Gestion Financière Professionnelle{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Service Banner Top -->
+    <div class="alert" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; margin-bottom: 2rem;">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h5 class="mb-2"><i class="fas fa-shield-alt"></i> Gestion Financière Sécurisée avec IA</h5>
+                <p class="mb-0"><i class="fas fa-check-circle"></i> Analyse automatique | <i class="fas fa-brain"></i> Détection d'anomalies | <i class="fas fa-chart-line"></i> Recommandations personnalisées</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-light btn-sm" onclick="aiAnalyzeFinances()">
+                    <i class="fas fa-robot"></i> Demander une Analyse IA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#transactionModal">
+                <i class="fas fa-plus"></i> Nouvelle Transaction
+            </button>
+            <button class="btn btn-info" onclick="uploadReceipt()">
+                <i class="fas fa-camera"></i> Upload Justificatif
+            </button>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group">
+                <button class="btn btn-success-custom" onclick="exportFinances('excel')">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="btn btn-danger-custom" onclick="exportFinances('pdf')">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="btn btn-warning" onclick="exportFinances('csv')">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card success">
+                <div class="icon"><i class="fas fa-arrow-up"></i></div>
+                <h6>Revenus Totaux</h6>
+                <h2>{{ "%.2f"|format(stats.total_revenue if stats else 0) }}€</h2>
+                <small>{{ "%.2f"|format(stats.total_revenue * 655.96) }} XAF</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card danger">
+                <div class="icon"><i class="fas fa-arrow-down"></i></div>
+                <h6>Dépenses Totales</h6>
+                <h2>{{ "%.2f"|format(stats.total_expenses) }}€</h2>
+                <small>{{ "%.2f"|format(stats.total_expenses * 655.96) }} XAF</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card primary">
+                <div class="icon"><i class="fas fa-wallet"></i></div>
+                <h6>Balance</h6>
+                <h2 class="{% if stats.balance > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ "%.2f"|format(stats.balance) }}€
+                </h2>
+                <small>{{ "%.2f"|format(stats.balance * 655.96) }} XAF</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <div class="icon"><i class="fas fa-chart-pie"></i></div>
+                <h6>Taux d'Épargne</h6>
+                <h2>{{ "%.1f"|format(stats.savings_rate) }}%</h2>
+                <small>Objectif: 20%</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="custom-table">
+        <div class="p-4">
+            <h5 class="mb-4"><i class="fas fa-list"></i> Transactions Financières</h5>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Catégorie</th>
+                    <th>Raison</th>
+                    <th>Montant</th>
+                    <th>Méthode</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.date }} {{ transaction.time }}</td>
+                    <td>
+                        <span class="status-badge 
+                            {% if transaction.type == 'revenue' %}success
+                            {% elif transaction.type == 'expense' %}danger
+                            {% elif transaction.type == 'investment' %}primary
+                            {% else %}info{% endif %}">
+                            {{ transaction.type }}
+                        </span>
+                    </td>
+                    <td>{{ transaction.category }}</td>
+                    <td>{{ transaction.reason }}</td>
+                    <td class="{% if transaction.type in ['revenue', 'receivable', 'credit'] %}text-success{% else %}text-danger{% endif %}">
+                        {% if transaction.type in ['expense', 'debt'] %}-{% endif %}{{ "%.2f"|format(transaction.amount) }}€
+                    </td>
+                    <td>{{ transaction.payment_method }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewTransaction({{ transaction.id }})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger-custom" onclick="deleteTransaction({{ transaction.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal fade" id="transactionModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--secondary-color); color: var(--text-primary);">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouvelle Transaction Financière</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Type de Transaction</label>
+                            <select class="form-control" name="type" required>
+                                <option value="revenue">💰 Revenu</option>
+                                <option value="expense">💸 Dépense</option>
+                                <option value="receivable">📥 Créance</option>
+                                <option value="credit">💳 Crédit</option>
+                                <option value="debt">📤 Dette</option>
+                                <option value="investment">📈 Investissement</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Catégorie</label>
+                            <select class="form-control" name="category" required>
+                                <option value="Salaire">💼 Salaire</option>
+                                <option value="Freelance">💻 Freelance</option>
+                                <option value="Business">🏢 Business</option>
+                                <option value="Alimentation">🍔 Alimentation</option>
+                                <option value="Transport">🚗 Transport</option>
+                                <option value="Logement">🏠 Logement</option>
+                                <option value="Santé">⚕️ Santé</option>
+                                <option value="Loisirs">🎮 Loisirs</option>
+                                <option value="Éducation">📚 Éducation</option>
+                                <option value="Shopping">🛍️ Shopping</option>
+                                <option value="Famille">👨‍👩‍👧 Famille</option>
+                                <option value="Épargne">💎 Épargne</option>
+                                <option value="Autre">📦 Autre</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Raison / Description</label>
+                        <input type="text" class="form-control" name="reason" required placeholder="Ex: Courses du mois">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Montant</label>
+                            <input type="number" step="0.01" class="form-control" name="amount" id="amount" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Devise</label>
+                            <select class="form-control" name="currency" id="currency" onchange="updateConversion()">
+                                <option value="EUR" selected>EUR (€)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="XAF">XAF (FCFA)</option>
+                                <option value="GBP">GBP (£)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Équivalent</label>
+                            <input type="text" class="form-control" id="converted" readonly placeholder="Conversion auto">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Méthode de Paiement</label>
+                            <select class="form-control" name="payment_method">
+                                <option value="Espèces">💵 Espèces</option>
+                                <option value="Carte">💳 Carte Bancaire</option>
+                                <option value="Virement">🏦 Virement</option>
+                                <option value="Chèque">📝 Chèque</option>
+                                <option value="Mobile Money">📱 Mobile Money</option>
+                                <option value="PayPal">💙 PayPal</option>
+                                <option value="Crypto">₿ Crypto</option>
+                                <option value="Autre">🔀 Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tags / Étiquettes</label>
+                            <select class="form-control" name="tags" multiple>
+                                <option value="urgent">🔴 Urgent</option>
+                                <option value="récurrent">🔄 Récurrent</option>
+                                <option value="business">💼 Business</option>
+                                <option value="personnel">👤 Personnel</option>
+                                <option value="famille">👨‍👩‍👧 Famille</option>
+                                <option value="investissement">📈 Investissement</option>
+                                <option value="luxe">💎 Luxe</option>
+                                <option value="nécessité">⚡ Nécessité</option>
+                            </select>
+                            <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Heure</label>
+                            <input type="time" class="form-control" name="time" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">État Émotionnel</label>
+                            <select class="form-control" name="emotional_state" multiple>
+                                <option value="serein">😌 Serein</option>
+                                <option value="confiant">😊 Confiant</option>
+                                <option value="stressé">😰 Stressé</option>
+                                <option value="anxieux">😟 Anxieux</option>
+                                <option value="impulsif">⚡ Impulsif</option>
+                                <option value="réfléchi">🤔 Réfléchi</option>
+                                <option value="pressé">⏰ Pressé</option>
+                                <option value="détendu">😎 Détendu</option>
+                            </select>
+                            <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Niveau d'Énergie</label>
+                            <select class="form-control" name="energy_level">
+                                <option value="1">⚫ Très faible</option>
+                                <option value="2">🔴 Faible</option>
+                                <option value="3" selected>🟡 Moyen</option>
+                                <option value="4">🟢 Bon</option>
+                                <option value="5">⚡ Excellent</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Justificatif / Reçu (Image)</label>
+                        <input type="file" class="form-control" name="receipt_image" accept="image/*" onchange="previewImage(this)">
+                        <div id="imagePreview" class="mt-2"></div>
+                        <small class="text-muted">PNG, JPG, JPEG, GIF (Max 16MB)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes / Commentaires</label>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Ajoutez des détails supplémentaires..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary-custom w-100">
+                        <i class="fas fa-save"></i> Enregistrer la Transaction
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Conversion rates (should be updated from API in production)
+const conversionRates = {
+    'EUR': {'EUR': 1, 'USD': 1.10, 'XAF': 655.96, 'GBP': 0.85},
+    'USD': {'EUR': 0.91, 'USD': 1, 'XAF': 596.33, 'GBP': 0.77},
+    'XAF': {'EUR': 0.00152, 'USD': 0.00168, 'XAF': 1, 'GBP': 0.00129},
+    'GBP': {'EUR': 1.18, 'USD': 1.30, 'XAF': 774.95, 'GBP': 1}
+};
+
+function updateConversion() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const fromCurrency = document.getElementById('currency').value;
+    const toCurrency = fromCurrency === 'EUR' ? 'XAF' : 'EUR';
+    
+    if (amount > 0) {
+        const converted = amount * conversionRates[fromCurrency][toCurrency];
+        document.getElementById('converted').value = `${converted.toFixed(2)} ${toCurrency}`;
+    }
+}
+
+document.getElementById('amount').addEventListener('input', updateConversion);
+
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `
+                <div style="position: relative; display: inline-block;">
+                    <img src="${e.target.result}" style="max-width: 300px; max-height: 200px; border-radius: 10px;">
+                    <button type="button" class="btn btn-sm btn-danger" style="position: absolute; top: 5px; right: 5px;" 
+                            onclick="this.parentElement.parentElement.innerHTML = ''; document.querySelector('input[name=receipt_image]').value = '';">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+document.getElementById('transactionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    const response = await fetch('/api/financial-transaction', {
+        method: 'POST',
+        body: formData
+    });
+    
+    if (response.ok) {
+        showToast('Transaction enregistrée avec succès', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } else {
+        showToast('Erreur lors de l\'enregistrement', 'danger');
+    }
+});
+
+function viewTransaction(id) {
+    window.location.href = `/transaction/${id}`;
+}
+
+function deleteTransaction(id) {
+    if (confirm('Supprimer cette transaction ?')) {
+        fetch(`/api/financial-transaction/${id}`, { method: 'DELETE' })
+            .then(() => {
+                showToast('Transaction supprimée', 'success');
+                location.reload();
+            });
+    }
+}
+
+function exportFinances(format) {
+    showToast(`Export ${format.toUpperCase()} en cours...`, 'info');
+    window.location.href = `/api/export-finances?format=${format}`;
+}
+
+async function aiAnalyzeFinances() {
+    showToast('Analyse IA en cours...', 'info');
+    const response = await fetch('/api/ai-analyze-finances');
+    const data = await response.json();
+    
+    if (data.success) {
+        alert(`Analyse IA:\n\n${data.analysis}\n\nRecommandations:\n${data.recommendations}`);
+    }
+}
+
+function uploadReceipt() {
+    document.querySelector('input[name="receipt_image"]').click();
+}
+
+// Set current date and time as default
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const dateInput = document.querySelector('input[name="date"]');
+    const timeInput = document.querySelector('input[name="time"]');
+    
+    if (dateInput && !dateInput.value) {
+        dateInput.value = now.toISOString().split('T')[0];
+    }
+    if (timeInput && !timeInput.value) {
+        timeInput.value = now.toTimeString().slice(0, 5);
+    }
+});
+</script>
+
+<!-- Service Banner Bottom -->
+<div class="alert alert-dark mt-4" style="background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); border: none; color: white;">
+    <div class="text-center">
+        <h6 class="mb-3"><i class="fas fa-shield-alt"></i> Tous vos Documents Financiers sont Sécurisés</h6>
+        <p class="mb-3">Chiffrement de bout en bout • Sauvegarde automatique • Conformité RGPD</p>
+        <div class="row">
+            <div class="col-md-4"><i class="fas fa-lock"></i> Données chiffrées</div>
+            <div class="col-md-4"><i class="fas fa-cloud-upload-alt"></i> Backup cloud</div>
+            <div class="col-md-4"><i class="fas fa-user-shield"></i> Vie privée protégée</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

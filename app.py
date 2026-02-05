@@ -995,16 +995,15 @@ def finances():
     total_expenses = sum(t['amount'] for t in transactions if t['type'] == 'expense')
     
    # Dans app.py, assure-toi que le dictionnaire ressemble à ça :
-stats = {
-    'total_income': total_income,
-    'total_expenses': total_expenses,
-    'balance': total_income - total_expenses,
-    'savings_rate': ( (total_income - total_expenses) / total_income * 100 ) if total_income > 0 else 0
-}
-    # --------------------------------------------
-
+def finances():
+    # ... du code avant ...
+    stats = {
+        'total_income': total_income,
+        'total_expenses': total_expenses,
+        'savings_rate': savings_rate  # Assure-toi que cette virgule est là
+    }
     return render_template('finances.html', transactions=transactions, stats=stats)
-
+# ^ Cette ligne doit être alignée avec "stats ="
 @app.route('/api/financial-transaction', methods=['POST'])
 @login_required
 def add_financial_transaction():

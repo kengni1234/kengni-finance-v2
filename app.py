@@ -1786,7 +1786,8 @@ if __name__ == '__main__':
     print("🔐 Password: MdPFort")
     print("=" * 60)
     
-    if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5001))
-    app.run(host='0.0.0.0', port=port)
+    # À la ligne 1789, ton code doit ressembler exactement à ça :
+if __name__ == "__main__":
+    import os  # <--- Il doit y avoir 4 espaces (ou une tabulation) ici
+    port = int(os.environ.get("PORT", 5001)) # <--- Ici aussi
+    app.run(host='0.0.0.0', port=port) # <--- Et ici aussi
